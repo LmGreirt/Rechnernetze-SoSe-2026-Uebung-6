@@ -1,0 +1,53 @@
+Aufgabe 1
+a)Sliding-Window beschreibt ein Prinzip bei der flow control, dass die Versendung einer bestimmten Menge Daten (das Fenster) ermöglicht, bevor eine Bestätigung erwartet wird. Flow control verhindert, dass der Empfänger überlastet wird. Dazu sendet dieser am Anfang seinen verwendbaren Buffer space (rwnd). Der Sender kann dann nicht nur ein Frame schicken und muss dann auf die Bestätigung dieses Frames warten, sondern kann in der größe des Fensters weiter Frames schicken. Erst wenn ein Frame bestätigt wird, fällt er aus dem Fenster raus.
+TCP Tahoe, TCP Reno und TCP Vegas sind Protokolle im Zusammenhang mit congestion control, also der Vermeidung von Netzwerküberlastung. Dabei sind Tahoe und Reno reaktiv und Vegas proaktiv. Die Congestion control strategie von TCP verwendet slow start, dabei wird die congestion window size (CWND) am Anfang auf eine kleines Vielfaches der maximum segment size (MSS) gesetzt und wächst dann exponentiell (per RTT), bis entweder packet loss auftritt, rwnd limitiert, oder slow start threshold (ssthresh) erreicht wird. Danach wechselt TCP zum congestion avoidance algorithmus. Hier wird cwnd dann idR linear inkrementiert, wie genau hängt vom spezifischen algroithmus ab. 
+Tahoe funktioniert so, dass wenn packet loss bemerkt, das Paket neu gesendet, die Hälfte von cwnd als ssthresh gespeichert und wieder mit slow start begonnen wird. Reno verhält sich beim normalen Timeout identisch, benutzt aber zusätzlich fast retransmit. Wenn drei doppelte ACKs ankommen (also auch ein packet loss) überspringt Reno die slow start phase und halbiert stattdessen CWND.
+Vegas ist dagegen ein proaktiver Algorithmus, der die RTT trackt und cwnd verkleinert, wenn das Netz langsamer wird. (Höhere RTT ist ein Indiz dafür, dass die Buffer der Router vollaufen.)
+
+b)
+Ethernet - Schicht 1-3 (legt Hardware fest und bspw. collision detection auf Netzwerk Ebene, außerdem unetere Network layer ((MAC))
+IP/ICMP/ARP/RARP - Schicht 3 (obere Netzwerkschicht, da Routing)
+TCP/UDP - Schicht 4 (Quittungsbetrieb, Sequenznummern, Flowcontrol, ...)
+DNS/DHCP - Schicht 7 (Service auf Application Ebene)
+
+Aufgabe 2
+a) 
+nmap -sn -v -T4 192.168.178.62/24
+Es sind 5 Hosts up. In Wireshark sieht man für jede mögliche IP im Netz ein ARP, genauso wie für jede IP, die Antwortet.
+b)
+sudo nmap -O -v -T4 scanme.nmap.org
+Betriebssystem ist Linux (Linux 2.6.32 (93%))
+c)
+whois nmap.org
+Creation Date: 1999-01-18T05:00:00Z
+d)
+Mit: sudo nmap -sS -Pn -n --top-ports 100 --max-rate 5000 <IP>
+-Pn: No Ping, verhindert, dass nmap auf timeouts von pings warten muss
+-n: No Domainnameresolution
+--top-ports 100: Anstatt der ersten 1000 werden die ersten 100 Ports gescannt
+--max-rate 5000: Zwingt nmap mindestens 5000 Pakete pro Sekunde zu schicken
+e)
+Der Syn-Scan bricht den Drei-Wege-Handshake von TCP ab, sobald er die Informationen hat, die er braucht und ist damit sehr effizient.
+f)
+80 - HTTP
+443 - HTTPS
+22 - SSH
+53 - DNS
+554 - Real Time Streaming Protocol
+
+Aufgabe 3
+a) Wenn ich einen neuen PC habe und ihn daheim ans Internet anschließen will, dann hat er zuerst keine IP und weiß auch nicht, welche IP sein Router hat/wie das Netz aussieht. Deswegen sendet er einen DHCP Request (Broadcast) und erhält vom Router die Antwort, der ihm eine IP zuweist.
+b) Capture filter: port 67 or port 68
+c) Man kann in den beiden screenshots sehen, dass der header der dhcp-Nachricht fast gleich ist. Ganz oben steht message type (boot request und boot reply), dann kommen Dinge wie Hardware Type, Transaction ID, etc...
+Im Request kann man sehen, dass der Client keine Werte für seine IP-Adresse oder die des Servers hat (alles 0.0.0.0). Dann sieht man, dass er seine Mac-Adresse an den Server schickt. Der Server benutzt sie, um zu prüfen ob für dieses Gerät schon eine IP reserviert ist.
+Option 53 sagt dem Server, dass es sich um einen Request handelt. In Option 55 (Parameter Request List) gibt der Client an, welche Informationen er vom Server haben will. In Option 50 gibt er die IP-Adresse an, die er haben will. Normalerweise muss der Serve ihm diese vorher anbieten, aber da der Server den Laptop schon kennt werden die ersten beiden Schritte übersprungen und der Laptop fragt nach der IP, die er vorher hatte.
+
+Der andere Screenshot zeigt das ACK Packet, das der Server zur Bestätigung schickt. Unter Option 54 schickt er die IP des DHCP-Servers, unter Option 51 legt er die Lease-time fest (hier 10 Tage), also wie lange der Laptop die IP behalten darf. Mit der Renewal-time sagt er dem Laptop, dass er nach 5 Tagen versuchen soll, die IP zu verlängern. Wenn das nicht funktioniert versucht er es nach der rebinding-time nochmal als broadcast. Dann bekommt der client die Subnetzmaske, die IP des Routers, die IP des DNS-Servers, den Domain Name des routers, die MTU (maximum transmission unit), die broadcast adresse und die Adresse des NTP-Servers.
+
+Aufgabe 4
+Jeder Router im System hat eine Liste von Distanzvektoren. Jeder dieser Distanzvektoren gibt an, wie weit der Weg zu jedem im Netz für den Router erreichbaren Ziel ist und über welchen der direkten Nachbarn des Knotens der Weg läuft. In jeder Iteration des Algorithmus wird dann die Liste von Distanzvektoren an jeden Nachbarn übertragen. Im Beispiel würde also die Liste von A nur die Einträge C (23) und B (3) haben. Im nächsten Schritt erhält A die Listen von B und C und kann dann berechnen, dass der Weg A -> B -> C (3+2) kürzer ist als A -> C (23). Damit wird der Eintrag aktualisiert, der minimale Weg hat Länge 5 und läuft über B. Außerdem wird D in As Liste aufgenommen, da es in Cs Liste vorkommt.
+
+Bei Link-State-Verfahren bekommt jeder Router statt nur die Informationen von seinem Nachbarn, die gesamte Netzwerktopologie und berechnet auf dieser Grundlage für sich selbst per Dijkstra Algorithmus den kürzesten Weg zum Ziel. Die Informationsübermittlung erfolgt dabei per Multicast, sodass jeder Router im Netzwerk von jedem Router Informationen bekommt.
+
+Hybride Nutzung ist sinnvoll, da Link-State zwar schneller ist und nicht so fehleranfällig, allerdings sehr aufwändig. Wenn das Netzwerk sehr groß wird, ist es irgendwann unmöglich, die gesamte Topologie zu speichern. Dann ist es sinnvoll das Netz in subgraphen zu unterteilen und das Routing zwischen diesen über Distanz-Vektor-Protokolle zu regeln. Ein weiterer Anwendungsfall wäre, wenn man mit Routern mit stark limitierter Rechenleistung arbeiten muss, da im Link-State-Verfahren jeder Router die gesamte Topologie speichern und dann die Wege berechnen muss. 
+
